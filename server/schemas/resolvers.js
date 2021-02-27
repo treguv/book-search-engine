@@ -1,5 +1,6 @@
 const { AuthenticationError } = require("apollo-server-express");
 const { User, Book } = require("../models");
+const { signToken } = require("../utils/auth");
 //add authentication later
 
 const resolvers = {
@@ -12,16 +13,22 @@ const resolvers = {
         .select("-__v -password")
         .populate("savedBooks");
     },
+    books: async () => {
+      return Book.find().select("-__v");
+    },
+    book: async (parent, { title }) => {
+      return Book.findOne({ title }).select("-__v");
+    },
   },
 
   Mutation: {
     addUser: async (parent, args) => {
       const user = await User.create(args);
-      return user;
+      const token = signToken(user);
+      return { token, user };
     },
     login: async (parent, { email, password }) => {
       const user = await User.findOne({ email });
-
       //check if the user was found
       if (!user) {
         throw new AuthenticationError("Incorrect Credentials");
@@ -32,7 +39,8 @@ const resolvers = {
         throw new AuthenticationError("Incorrect Credentials");
       }
       //if we made it here we got the right credentials
-      return user;
+      const token = signToken(user);
+      return { token, user };
     },
   },
 };
